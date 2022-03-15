@@ -49,22 +49,6 @@ def guess_mass(sample):
     print sample
     sys.exit(2)
 
-def get_susypair_pt(bsm_container):
-    p1, p2 = None, None
-    for p in bsm_container:
-        if p.status()!=62: continue
-        if p.absPdgId()<100000: continue
-
-        if not p1: p1 = p
-        else:
-            p2 = p
-            break
-    if not p2:
-        print "Couldn't find two status 62 SUSY particles"
-        sys.exit(2)
-    return (p1.p4()+p2.p4()).Pt()*1e-3 #GeV
-    #return (p1+p2).pt() #this fails for some reason
-    
 
 def main(opts):
     import ROOT
@@ -101,11 +85,13 @@ def main(opts):
         hname = "hpt_{}_{}_{}".format(production, mass, syst)
         hpt = ROOT.TH1F(hname, hname,*opts.binning)
         print "Will process",sample, (production, mass, syst)
+        ST = ROOT.ST.SUSYObjDef_xAOD('ST_data')
+        print "Created ST"
         for ev in range(ttree.GetEntries()):
             ttree.GetEntry(ev)
-            spsp_pt = get_susypair_pt( getattr(ttree,opts.bsm_container) )
+            spsp_pt = ST.GetSusySystemPt( getattr(ttree,opts.bsm_container) )/1000.
             assert ttree.EventInfo.mcEventWeights()[0] == ttree.TruthEvents[0].weights()[0]
-            weight = 1
+            weight = ttree.EventInfo.mcEventWeights()[0]
             hpt.Fill(spsp_pt, weight)
         outfile.cd()
         hpt.Scale(1./hpt.Integral(0,-1))
